@@ -135,6 +135,25 @@ def status_command(run_id: str | None = typer.Argument(None), json_output: bool 
     _render(_api().status(run_id), json_output)
 
 
+@app.command("account")
+def account_command(mode: str = typer.Option("paper", "--mode"), json_output: bool = typer.Option(False, "--json")):
+    _render(_api().account(mode), json_output)
+
+
+@app.command("positions")
+def positions_command(mode: str = typer.Option("paper", "--mode"), json_output: bool = typer.Option(False, "--json")):
+    _render(_api().positions(mode), json_output)
+
+
+@app.command("orders")
+def orders_command(
+    mode: str = typer.Option("paper", "--mode"),
+    limit: int = typer.Option(100, "--limit"),
+    json_output: bool = typer.Option(False, "--json"),
+):
+    _render(_api().orders(mode, limit), json_output)
+
+
 @app.command("logs")
 def logs_command(run_id: str, lines_count: int = typer.Option(100, "--lines"), json_output: bool = typer.Option(False, "--json")):
     _render(_api().logs(run_id, lines_count), json_output)

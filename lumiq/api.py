@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from .services.responses import error
+from .services.monitoring import MonitoringService
 from .services.runtime import RuntimeService
 from .services.strategies import StrategyService
 
@@ -17,6 +18,7 @@ class LumiqApi:
         resolved_state = Path(state_dir or os.environ.get("LUMIQ_STATE_DIR", "~/.lumiq"))
         self.strategies = StrategyService(self.project_root / "strategies", resolved_state)
         self.runtime = RuntimeService(self.project_root, resolved_state)
+        self.monitoring = MonitoringService()
 
     def list_strategies(self) -> dict:
         return self.strategies.list()
@@ -47,3 +49,12 @@ class LumiqApi:
 
     def backtest(self, strategy_id: str, parameters: dict[str, Any]) -> dict:
         return error("NOT_IMPLEMENTED", "Backtest delegation is not implemented yet; use LumiBot directly for now.")
+
+    def account(self, mode: str = "paper") -> dict:
+        return self.monitoring.account(mode)
+
+    def positions(self, mode: str = "paper") -> dict:
+        return self.monitoring.positions(mode)
+
+    def orders(self, mode: str = "paper", limit: int = 100) -> dict:
+        return self.monitoring.orders(mode, limit)
