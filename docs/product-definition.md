@@ -440,7 +440,7 @@ Do not infer live trading from broker configuration alone.
 
 12. Runtime Management
 
-The CLI should eventually make it possible to inspect running strategies:
+The CLI must make it possible to inspect managed strategy processes:
 
 lumiq status
 
@@ -460,6 +460,15 @@ portfolio value
 positions
 orders
 
+Runtime process information comes from LumiQ's Supervisor. Broker account information comes from the configured LumiBot Alpaca broker through read-only calls. They are intentionally separate:
+
+- `lumiq status --json` reports LumiQ-managed process state.
+- `lumiq account --mode paper --json` reports the selected Alpaca account.
+- `lumiq positions --mode paper --json` reports positions in that account.
+- `lumiq orders --mode paper --json` reports orders in that account.
+
+All broker-monitoring commands are read-only. They must not start a strategy, create an order, connect a streaming execution loop, or mutate broker state.
+
 But only expose information that can reliably be obtained from LumiBot/broker/process state.
 
 Do not invent an independent trading state machine.
@@ -474,15 +483,74 @@ LumiBot already has Order and Position entities and broker/strategy APIs.
 
 Expose them rather than creating competing domain models.
 
-Potential commands:
+Broker monitoring is account-scoped, not strategy-scoped:
 
-lumiq positions momentum
-lumiq orders momentum
+```bash
+lumiq account --mode paper --json
+lumiq positions --mode paper --json
+lumiq orders --mode paper --limit 100 --json
+```
 
-Agent:
+`--mode` must be explicit and accept only `paper` or `live`. It defaults to `paper` for safe inspection. The selected mode configures the LumiBot Alpaca adapter with the same `PAPER` / `IS_PAPER` behavior used by the execution worker.
 
-lumiq positions momentum --json
-lumiq orders momentum --json
+### Account
+
+`lumiq account --mode <paper|live> --json` returns the broker account summary. When Alpaca supplies the values, this includes:
+
+- `cash`
+- `equity` or `portfolio_value`
+- `buying_power`
+- `last_equity`
+- account `status`
+- `pnl_today` and `pnl_today_pct`, derived only as $equity - last_equity$
+
+Conceptual response:
+
+```json
+{
+  "status": "success",
+  "mode": "paper",
+  "broker": "alpaca",
+  "account": {
+    "cash": "100000.00",
+    "equity": "100142.30",
+    "buying_power": "200284.60",
+    "last_equity": "100000.00",
+    "status": "ACTIVE"
+  },
+  "pnl_today": 142.3,
+  "pnl_today_pct": 0.1423
+}
+```
+
+This P&L is the P&L of the selected broker account. It must not be labelled as P&L for a specific strategy when multiple strategies share that account.
+
+### Positions
+
+`lumiq positions --mode <paper|live> --json` returns open broker positions. Each item may include the broker-provided fields:
+
+- `symbol`, `qty`, `side`
+- `market_value`, `cost_basis`
+- `avg_entry_price`, `current_price`
+- `unrealized_pl`, `unrealized_plpc`
+- intraday unrealized P&L fields when the broker provides them
+
+### Orders
+
+`lumiq orders --mode <paper|live> --limit <1..500> --json` returns broker orders. Each item may include:
+
+- `id`, `symbol`, `side`, `qty`, `filled_qty`
+- `status`, order type, limit/stop price
+- `filled_avg_price`, `submitted_at`, `filled_at`
+
+`--limit` defaults to `100` and must be between `1` and `500`.
+
+All three commands must preserve the agent JSON contract:
+
+- stdout contains one valid JSON document and no ANSI or startup logging.
+- any library startup output is redirected to stderr.
+- failures are structured `{"status":"error", "error":{"code":"...", "message":"..."}}` responses with a non-zero exit code.
+- missing credentials, incompatible Paper/Live configuration, invalid mode, invalid order limit, and broker query failures must be distinguishable error codes.
 
 Reuse LumiBot serialization such as:
 
@@ -564,6 +632,9 @@ lumiq experiment compare <run-a> <run-b>
 lumiq results <run-id>
 lumiq run <strategy> --paper
 lumiq status [strategy]
+lumiq account --mode paper
+lumiq positions --mode paper
+lumiq orders --mode paper
 
 All relevant commands should support:
 
@@ -811,6 +882,9 @@ Agents use deterministic CLI commands:
 lumiq strategies list --json
 lumiq strategy show momentum --json
 lumiq status momentum --json
+lumiq account --mode paper --json
+lumiq positions --mode paper --json
+lumiq orders --mode paper --limit 100 --json
 lumiq backtest momentum --json
 lumiq experiment run momentum --json
 lumiq experiment compare <run-a> <run-b> --json
@@ -1388,6 +1462,9 @@ lumiq strategy show momentum
 lumiq status momentum
 lumiq start momentum --paper
 lumiq stop momentum
+lumiq account --mode paper
+lumiq positions --mode paper
+lumiq orders --mode paper
 
 Agent usage:
 
@@ -1396,6 +1473,9 @@ lumiq strategy show momentum --json
 lumiq status momentum --json
 lumiq start momentum --paper --json
 lumiq stop momentum --json
+lumiq account --mode paper --json
+lumiq positions --mode paper --json
+lumiq orders --mode paper --json
 
 Backtesting and code-iteration commands may continue to exist in the CLI:
 
