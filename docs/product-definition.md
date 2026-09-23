@@ -876,14 +876,14 @@ The main screen displays the strategy pool and current runtime state.
 │                                                                  │
 │ Strategies                                                       │
 │                                                                  │
-│ NAME                 MODE       STATUS       PNL       ACTION     │
-│ › Momentum V3        Paper      ● Running    +1.4%     [Stop]     │
-│   Mean Reversion     —          ○ Stopped     —        [Start]    │
-│   SPY Breakout       Paper      ● Running    +0.3%     [Stop]     │
-│   Crypto Momentum    —          ○ Stopped     —        [Start]    │
+│ NAME                 MODE       STATUS                           │
+│ › Momentum V3        Paper      ● Running                        │
+│   Mean Reversion     —          ○ Stopped                        │
+│   SPY Breakout       Paper      ● Running                        │
+│   Crypto Momentum    —          ○ Stopped                        │
 │                                                                  │
 ├──────────────────────────────────────────────────────────────────┤
-│ ↑↓ Select   Enter Details   R Run   S Stop   B Backtest   Q Quit │
+│ ↑↓ Select   Enter Details   R Run   S Stop   B    Q Quit │
 └──────────────────────────────────────────────────────────────────┘
 
 The main screen must prioritize operational information rather than analytics.
@@ -898,9 +898,13 @@ What can I start or stop?
 
 ⸻
 
-26. Strategy Detail
+# 26. Strategy Detail
 
-Selecting a strategy opens its detail view.
+Selecting a strategy opens its operational detail view.
+
+The purpose of this screen is to understand the current state of an existing strategy and operate it in Paper or Live mode.
+
+Example:
 
 ┌─ Momentum V3 ────────────────────────────────────────────────────┐
 │                                                                  │
@@ -908,180 +912,305 @@ Selecting a strategy opens its detail view.
 │ Broker       Alpaca             Started       09:31              │
 │                                                                  │
 │ Parameters                                                       │
-│ lookback                         30                              │
-│ stop_loss                        0.03                            │
-│ risk                             0.02                            │
+│ lookback                         30                               │
+│ stop_loss                        0.03                             │
+│ risk                             0.02                             │
 │                                                                  │
-│ [Backtest] [Edit Params] [Experiments] [Logs] [Stop]             │
+│ [Run Paper] [Run Live] [Stop] [Edit Params] [Param History]      │
 │                                                                  │
+│ Recent Logs                                      Last 50 lines   │
+│ ──────────────────────────────────────────────────────────────── │
+│ 14:31:02  INFO   Trading iteration started                       │
+│ 14:31:03  INFO   SPY price 674.21                                │
+│ 14:31:03  INFO   Signal HOLD                                     │
+│ 14:31:04  INFO   Portfolio value $102,431                        │
+│                                                                  │
+│ Filter: [________________________]   Level: [ALL ▼]               │
+│                                                                  │
+│ [Logs]                                           [Open Source]   │
 └──────────────────────────────────────────────────────────────────┘
 
-The initial actions are:
+The Strategy Detail screen must expose:
 
-Start
-Stop
-Backtest
-Edit Parameters
-Experiments
-Results
-Logs
-Open Source
+- Current status
+- Current execution mode
+- Broker
+- Start time
+- Current parameters
+- Parameter history
+- Recent logs
+- Source location
 
-Do not turn this into a full IDE.
+Available operational actions:
 
-⸻
+- Run Paper
+- Run Live
+- Stop
+- Edit Parameters
+- View Parameter History
+- View Logs
+- Open Source
 
-27. Editing
+There must be no Backtest, Experiment, or Compare action in this screen.
+
+Backtesting and strategy research belong to the agent/code iteration workflow and are not TUI operations.
+
+The Recent Logs section displays at most the latest 50 lines by default.
+
+
+# 27. Editing Strategies
 
 There are two different kinds of editing.
 
-Parameters
+## Parameter Editing
 
-Strategy parameters should be editable directly from the TUI.
+Runtime/configurable strategy parameters may be edited directly from the TUI.
 
-For example:
+Example:
 
 lookback       [30    ]
 stop_loss      [0.03  ]
 risk           [0.02  ]
 
-These values must map to LumiBot strategy parameters and the existing LumiQ experiment/backtest system.
+Editing a parameter modifies the configuration of the same registered strategy.
 
-Source Code
+It does NOT:
 
-Do not build a source-code editor inside LumiQ.
+- Create another strategy
+- Create an experiment
+- Duplicate the strategy
+- Automatically start another process
 
-Provide:
+Every parameter modification must be persisted in parameter history.
+
+At minimum record:
+
+- strategy_id
+- timestamp
+- parameter
+- previous_value
+- new_value
+- source
+
+`source` should identify who performed the change when known:
+
+- human
+- agent
+
+Example:
+
+{
+  "strategy_id": "momentum-v3",
+  "timestamp": "2026-09-22T21:35:00",
+  "parameter": "stop_loss",
+  "previous_value": 0.03,
+  "new_value": 0.025,
+  "source": "human"
+}
+
+This history is important because the agent must be able to understand how the strategy configuration has evolved.
+
+## Source Code
+
+Do not build a code editor inside LumiQ.
+
+The TUI provides:
 
 Open Source
 
-which opens the strategy using $EDITOR.
+This opens the existing strategy source using `$EDITOR`.
 
 Conceptually:
 
 $EDITOR strategies/momentum/strategy.py
 
-The TUI should display the strategy’s source location before opening it.
+The TUI should display the source location before opening it.
 
-⸻
+Code iteration, strategy development and backtesting remain primarily agent/developer workflows.
 
-28. Backtest Dialog
 
-Backtest opens a small configuration dialog:
+# 28. Run Strategy
 
-┌─ Run Backtest ────────────────────────────┐
-│                                          │
-│ Strategy        momentum-v3              │
-│                                          │
-│ Start           2025-01-01               │
-│ End             2025-12-31               │
-│ Budget          $100,000                  │
-│ Data Source     Yahoo                     │
-│                                          │
-│ Parameters                               │
-│ lookback        [ 30    ]                 │
-│ stop_loss       [ 0.03  ]                 │
-│ risk            [ 0.02  ]                 │
-│                                          │
-│          [ Cancel ]  [ Run Backtest ]     │
-└───────────────────────────────────────────┘
+The TUI only launches existing registered strategies.
 
-This must call the same backtest service used by:
-
-lumiq backtest momentum-v3 ...
-
-Do not implement TUI-specific backtesting behavior.
-
-⸻
-
-29. Experiments View
-
-The TUI should make experiments observable to the human operator.
+Selecting Run opens a small operational dialog.
 
 Example:
 
-┌─ Experiments / Momentum V3 ──────────────────────────────────────┐
+┌─ Run Strategy ────────────────────────────┐
+│                                          │
+│ Strategy        momentum-v3              │
+│                                          │
+│ Mode                                     │
+│   ● Paper                                │
+│   ○ Live                                 │
+│                                          │
+│ Broker          Alpaca                   │
+│                                          │
+│ Parameters                               │
+│ lookback        30                       │
+│ stop_loss       0.03                     │
+│ risk            0.02                     │
+│                                          │
+│           [Cancel]   [Start]              │
+└──────────────────────────────────────────┘
+
+Paper is the normal operational launch mode.
+
+Live must require explicit human confirmation.
+
+Live must never be inferred or automatically selected because of broker configuration.
+
+Before starting Live execution, show a confirmation such as:
+
+┌─ Confirm Live Trading ────────────────────┐
+│                                          │
+│ Start momentum-v3 with REAL capital?     │
+│                                          │
+│ Broker: Alpaca                           │
+│ Mode:   LIVE                             │
+│                                          │
+│       [Cancel]   [Confirm Live]           │
+└──────────────────────────────────────────┘
+
+There is no backtest action in the TUI.
+
+
+# 29. Parameter History
+
+Each registered strategy has a parameter-change history.
+
+This is not an experiment system.
+
+The strategy remains the same strategy while its configuration evolves.
+
+Example:
+
+┌─ Parameter History / Momentum V3 ────────────────────────────────┐
 │                                                                  │
-│ RUN             RETURN       SHARPE       DRAWDOWN     STATUS    │
-│ baseline         12.1%        1.31         -9.4%       Complete  │
-│ exp_021          13.8%        1.52         -7.1%       Complete  │
-│ exp_022          11.9%        1.28         -6.8%       Complete  │
-│ exp_023            —            —            —         Running   │
+│ TIME        PARAMETER      PREVIOUS      NEW          SOURCE     │
+│ 09/22 18:20 stop_loss      0.03          0.025        agent      │
+│ 09/22 15:42 lookback       20            30           agent      │
+│ 09/21 12:11 risk           0.01          0.02         human      │
 │                                                                  │
-│ [Compare]        [New Experiment]        [View Results]           │
+│                                              [Back]              │
 └──────────────────────────────────────────────────────────────────┘
 
-The TUI must read from the same Run Registry used by the agent CLI.
+The history must allow both the human and agent to answer:
 
-This allows a human to observe experiments launched by OpenClaw and vice versa.
+- What changed?
+- When did it change?
+- What was the previous value?
+- What is the new value?
+- Was the change made by the human or agent?
 
-⸻
+Parameter modifications do not create separate experiments or strategy instances.
 
-30. Logs View
+The agent may modify strategy code and parameters over time to pursue the strategy's goal.
 
-Provide a simple live log viewer:
+LumiQ records the operational history of those parameter changes.
 
-┌─ Momentum V3 / Logs ─────────────────────────────────────────────┐
+
+# 30. Logs
+
+Logs are part of the Strategy Detail screen.
+
+The default embedded view displays only the latest 50 lines.
+
+Example:
+
+┌─ Recent Logs ────────────────────────────────────────────────────┐
+│ Filter: [order____________]   Level: [ALL ▼]    Last 50 lines    │
 │                                                                  │
-│ 14:31:02  Iteration started                                      │
-│ 14:31:03  SPY price 674.21                                       │
-│ 14:31:03  Signal HOLD                                            │
-│ 14:31:04  Portfolio value $102,431                               │
-│ 14:32:02  Iteration started                                      │
+│ 14:31:02 INFO   Trading iteration started                        │
+│ 14:31:03 INFO   SPY price 674.21                                 │
+│ 14:31:04 INFO   Order submitted                                  │
+│ 14:31:04 INFO   BUY 10 SPY @ MARKET                              │
 │                                                                  │
-│                                                    ● FOLLOWING   │
+│                                               ● FOLLOWING        │
 └──────────────────────────────────────────────────────────────────┘
 
-Reuse LumiBot/LumiQ logs.
+The user can open a dedicated Logs view for more space.
 
-Do not create another logging system exclusively for the TUI.
+The dedicated view must also default to the latest 50 lines.
 
-The viewer only needs basic functionality initially:
+Logs should support:
 
-follow
-scroll
-pause
-resume
-clear view
+- Text filtering
+- Log-level filtering when level information exists
+- Follow
+- Scroll
+- Pause
+- Resume
+- Changing the number of displayed lines
 
-“Clear view” must not delete the underlying log.
+For example:
 
-⸻
+50
+100
+250
+500
 
-31. Keyboard Navigation
+Filtering must happen without modifying the underlying log.
 
-The initial TUI should be optimized for keyboard operation.
+"Clear View" may clear the currently rendered output but must never delete the underlying logs.
+
+Do not create a separate logging system for the TUI.
+
+Reuse the logs produced by LumiQ/LumiBot and the running strategy.
+
+
+# 31. Keyboard Navigation
+
+The TUI should be optimized for keyboard operation.
 
 Recommended shortcuts:
 
 ↑ / ↓       Navigate
 Enter       Open strategy
 Esc         Back
-R           Run
+R           Run Paper
+V           Run Live
 S           Stop
-B           Backtest
-E           Edit parameters
-X           Experiments
+E           Edit Parameters
+H           Parameter History
 L           Logs
 Q           Quit
 
 Keep shortcuts consistent across screens.
 
-⸻
+Actions that do not make sense for the current strategy state should be disabled.
 
-32. Runtime State
+For example:
 
-The TUI and agent must observe the same runtime state.
+Running Paper:
+
+Run Paper     disabled
+Run Live      disabled
+Stop          enabled
+
+Stopped:
+
+Run Paper     enabled
+Run Live      enabled
+Stop          disabled
+
+
+# 32. Runtime State
+
+The TUI and CLI must observe exactly the same runtime state.
+
+There is no separate state for humans and agents.
 
 For example, if OpenClaw executes:
 
 lumiq start momentum --paper --json
 
-the TUI should subsequently display:
+the TUI should display:
 
-Momentum       Paper       ● Running
+Momentum V3       Paper       ● Running
 
-Likewise, if the human stops it from the TUI:
+If the human stops it from the TUI:
 
 [Stop]
 
@@ -1089,18 +1218,35 @@ then:
 
 lumiq status momentum --json
 
-must report it as stopped.
+must report the strategy as stopped.
 
-There must not be separate human and agent state.
+Likewise, if the human changes:
 
-⸻
+stop_loss: 0.03 → 0.025
 
-33. Project Reorganization
+the agent must be able to retrieve the updated value and its parameter history.
 
-The existing project already contains:
+A registered strategy should have only one active operational instance managed by LumiQ at a time unless the existing runtime explicitly supports otherwise.
+
+Changing parameters does not create another strategy entry.
+
+The operational states should remain simple:
+
+Stopped
+Starting
+Running Paper
+Running Live
+Stopping
+Error
+
+
+# 33. Project Structure
+
+The existing project already contains working LumiQ functionality.
+
+Current structure:
 
 luminbot-cli/
-├── .venv/
 ├── docs/
 ├── lumibot-old-orchestrator/
 ├── lumiq/
@@ -1117,11 +1263,13 @@ luminbot-cli/
 ├── .gitignore
 └── requirements.txt
 
-Do not discard or rewrite working implementations simply to achieve a new folder structure.
+Do not perform a broad architectural refactor.
 
-First inspect the responsibility of every existing module.
+The existing CLI, registry, database, supervisor and worker are already part of the working system.
 
-Then refactor incrementally toward:
+The immediate architectural change is to add the TUI alongside them.
+
+Target:
 
 luminbot-cli/
 │
@@ -1131,97 +1279,58 @@ luminbot-cli/
 ├── lumiq/
 │   ├── __init__.py
 │   ├── __main__.py
+│   ├── cli.py
+│   ├── database.py
+│   ├── registry.py
+│   ├── supervisor.py
+│   ├── worker.py
 │   │
-│   ├── cli/
-│   │   ├── __init__.py
-│   │   ├── app.py
-│   │   ├── strategies.py
-│   │   ├── backtest.py
-│   │   ├── experiments.py
-│   │   ├── runtime.py
-│   │   └── results.py
-│   │
-│   ├── tui/
-│   │   ├── __init__.py
-│   │   ├── app.py
-│   │   ├── strategies.py
-│   │   ├── detail.py
-│   │   ├── backtest.py
-│   │   ├── experiments.py
-│   │   └── logs.py
-│   │
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── strategies.py
-│   │   ├── backtests.py
-│   │   ├── experiments.py
-│   │   ├── runtime.py
-│   │   └── results.py
-│   │
-│   ├── registry/
-│   │   ├── __init__.py
-│   │   ├── strategies.py
-│   │   └── runs.py
-│   │
-│   ├── infrastructure/
-│   │   ├── __init__.py
-│   │   ├── database.py
-│   │   ├── supervisor.py
-│   │   └── worker.py
-│   │
-│   └── output/
+│   └── tui/
 │       ├── __init__.py
-│       ├── console.py
-│       └── json.py
+│       ├── app.py
+│       ├── strategies.py
+│       ├── detail.py
+│       ├── run.py
+│       ├── parameter_history.py
+│       └── logs.py
 │
 ├── strategies/
-│
 ├── scripts/
 ├── tests/
-│   ├── cli/
-│   ├── tui/
-│   ├── services/
-│   └── integration/
-│
 ├── .env
 ├── .gitignore
 └── requirements.txt
 
-Responsibility of each layer
+Responsibilities:
 
-cli/
+cli.py
+    Existing Typer CLI.
+    Primary machine/agent interface through --json.
 
-Typer commands only. Parse input, call services, render output.
+registry.py
+    Existing strategy discovery/registry.
+
+supervisor.py
+    Existing strategy process/runtime management.
+
+worker.py
+    Existing execution worker.
+
+database.py
+    Existing persistence layer.
 
 tui/
-
-Textual interface only. Display state and call services.
-
-services/
-
-Shared application operations used by both CLI and TUI.
-
-registry/
-
-Strategy discovery and LumiQ run/experiment registry.
-
-infrastructure/
-
-Process supervision, persistence and worker implementation.
-
-output/
-
-Human console rendering and deterministic JSON serialization.
+    Human operational interface built with Textual.
 
 strategies/
+    Existing LumiBot strategies.
 
-Existing LumiBot strategies. Do not couple them to the TUI or CLI.
+Do not move working modules merely for architectural cleanliness.
 
-⸻
 
-34. Refactoring Existing Files
+# 34. Integration With Existing Code
 
-Before moving anything, inspect the current implementations of:
+Before implementing the TUI, inspect:
 
 lumiq/cli.py
 lumiq/database.py
@@ -1229,75 +1338,141 @@ lumiq/registry.py
 lumiq/supervisor.py
 lumiq/worker.py
 
-Then separate responsibilities.
+Reuse their existing public behavior wherever practical.
 
-Expected direction:
+The TUI should call the same underlying Python functionality already used by the CLI.
 
-Current                         Target
-cli.py                    →     cli/*
-database.py               →     infrastructure/database.py
-registry.py               →     registry/*
-supervisor.py             →     infrastructure/supervisor.py
-worker.py                 →     infrastructure/worker.py
+Do not implement:
 
-Business/application logic currently embedded in those files should move into:
+TUI
+ ↓
+execute shell command
+ ↓
+CLI
+ ↓
+LumiQ
 
-services/*
+Prefer:
 
-Do not mechanically move whole files if they contain mixed responsibilities.
+             CLI
+              │
+              ↓
+       Existing LumiQ logic
+              ↑
+              │
+             TUI
 
-Extract by responsibility.
+Only extract a shared function when the alternative would require duplicating existing logic.
 
-⸻
+Do not reorganize working files simply to create a theoretically cleaner architecture.
 
-35. Entry Point Behavior
+Preserve existing CLI behavior.
 
-The default command:
+
+# 35. Entry Point Behavior
+
+Running:
 
 lumiq
 
-opens the TUI.
+with no subcommand opens the Textual TUI.
 
-Agent/human automation commands remain available:
+The TUI is the human operational interface.
+
+Existing CLI commands remain available for automation and agent workflows.
+
+For example:
 
 lumiq strategies list
 lumiq strategy show momentum
-lumiq backtest momentum
-lumiq experiment run momentum
-lumiq results <run-id>
+lumiq status momentum
 lumiq start momentum --paper
 lumiq stop momentum
-lumiq status momentum
 
-Agent usage adds:
+Agent usage:
 
---json
-
-Example:
-
+lumiq strategies list --json
+lumiq strategy show momentum --json
 lumiq status momentum --json
+lumiq start momentum --paper --json
+lumiq stop momentum --json
 
-The presence of a subcommand means do not launch the TUI.
+Backtesting and code-iteration commands may continue to exist in the CLI:
 
-⸻
+lumiq backtest momentum --json
 
-36. Refactoring Constraint
+Those commands are intended for the agent/developer workflow.
 
-The agent must not perform a big-bang rewrite.
+The existence of a CLI command does NOT imply that an equivalent TUI screen or action should exist.
 
-Required order:
+In particular:
 
-1. Inspect existing implementation
-2. Add tests around currently working behavior
-3. Identify mixed responsibilities
-4. Create shared services
-5. Move CLI to use services
-6. Verify existing CLI still works
-7. Add deterministic --json output
-8. Add TUI on top of the same services
-9. Verify CLI and TUI observe identical state
-10. Remove obsolete code only after replacement is verified
+Backtesting → CLI/Agent only
+Code iteration → Agent/Developer
+Strategy operation → CLI + TUI
+Paper/Live monitoring → CLI + TUI
+Parameter management → CLI + TUI
+Logs → CLI + TUI
 
-lumibot-old-orchestrator/ must not be deleted automatically. Inspect whether it contains functionality still referenced by LumiQ. If it is truly obsolete, document that finding before removing it.
 
-The refactor is successful when the architecture becomes cleaner without breaking the currently executing strategy workflow.
+# 36. TUI Implementation Constraint
+
+The current CLI is working.
+
+Do not rewrite it as part of building the TUI.
+
+Implementation order:
+
+1. Inspect the existing LumiQ modules.
+
+2. Verify and preserve existing CLI behavior.
+
+3. Add Textual as the interactive TUI framework.
+
+4. Create:
+
+   lumiq/tui/
+
+5. Implement the Strategy List screen.
+
+6. Implement Strategy Detail with:
+   - runtime state
+   - mode
+   - broker
+   - parameters
+   - latest 50 log lines
+
+7. Implement:
+   - Run Paper
+   - Run Live with explicit confirmation
+   - Stop
+
+8. Implement parameter editing.
+
+9. Persist parameter-change history.
+
+10. Implement Parameter History view.
+
+11. Implement log filtering and the dedicated Logs view.
+
+12. Configure:
+
+   lumiq
+
+   with no subcommand to open the TUI.
+
+13. Verify all existing CLI --json behavior remains unchanged.
+
+Do NOT build TUI functionality for:
+
+- Backtesting
+- Creating experiments
+- Comparing experiments
+- Strategy generation
+- Code generation
+
+Those remain part of the agent/developer workflow.
+
+The TUI has one responsibility:
+
+**Operate, inspect and debug the existing strategy pool in Paper or Live execution.**

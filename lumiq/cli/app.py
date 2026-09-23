@@ -74,6 +74,21 @@ def strategy_show(strategy_id: str, json_output: bool = typer.Option(False, "--j
     _render(_api().show_strategy(strategy_id), json_output)
 
 
+@strategy_app.command("history")
+def strategy_history(strategy_id: str, json_output: bool = typer.Option(False, "--json")):
+    _render(_api().parameter_history(strategy_id), json_output)
+
+
+@strategy_app.command("configure")
+def strategy_configure(
+    strategy_id: str,
+    sets: list[str] = typer.Option([], "--set"),
+    source: str = typer.Option("agent", "--source"),
+    json_output: bool = typer.Option(False, "--json"),
+):
+    _render(_api().update_parameters(strategy_id, _parameters(sets, json_output), source), json_output)
+
+
 @app.command("discover")
 def discover_command(json_output: bool = typer.Option(False, "--json")):
     _render(_api().list_strategies(), json_output)

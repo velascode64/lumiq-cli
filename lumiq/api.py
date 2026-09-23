@@ -15,7 +15,7 @@ class LumiqApi:
     def __init__(self, project_root: Path | str | None = None, state_dir: Path | str | None = None):
         self.project_root = Path(project_root or Path(__file__).resolve().parents[1]).resolve()
         resolved_state = Path(state_dir or os.environ.get("LUMIQ_STATE_DIR", "~/.lumiq"))
-        self.strategies = StrategyService(self.project_root / "strategies")
+        self.strategies = StrategyService(self.project_root / "strategies", resolved_state)
         self.runtime = RuntimeService(self.project_root, resolved_state)
 
     def list_strategies(self) -> dict:
@@ -23,6 +23,12 @@ class LumiqApi:
 
     def show_strategy(self, strategy_id: str) -> dict:
         return self.strategies.show(strategy_id)
+
+    def update_parameters(self, strategy_id: str, parameters: dict[str, Any], source: str = "human") -> dict:
+        return self.strategies.update_parameters(strategy_id, parameters, source)
+
+    def parameter_history(self, strategy_id: str) -> dict:
+        return self.strategies.parameter_history(strategy_id)
 
     def start_strategy(self, strategy_id: str, mode: str, parameters: dict[str, Any], confirm_live: bool = False) -> dict:
         return self.runtime.start(strategy_id, mode, parameters, confirm_live)
