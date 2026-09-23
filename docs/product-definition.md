@@ -748,3 +748,556 @@ lumiq results <candidate-id> --json
 The agent must receive enough structured information from those commands to decide what experiment to run next.
 
 That loop — discover → backtest → modify parameters → experiment → compare → reason → repeat — is the core product.
+
+
+Yo agregaría esta sección al Product Definition. Ya la dejo escrita como instrucción para que el agente pueda reorganizar el proyecto existente sin rehacer lo que funciona.
+
+Human TUI & Project Structure
+
+23. Dual Interface: Human TUI + Agent CLI
+
+LumiQ must expose two interfaces over the same application core:
+
+                    LumiQ Core
+                        │
+             ┌──────────┴──────────┐
+             │                     │
+          Human                  Agent
+             │                     │
+        Textual TUI           Typer CLI
+             │                  --json
+             │                     │
+             └──────────┬──────────┘
+                        │
+                        ▼
+                  LumiQ Services
+                        │
+             Registry / Supervisor
+                        │
+                        ▼
+                     LumiBot
+
+The interfaces have different purposes:
+
+Human interface
+
+Running:
+
+lumiq
+
+must open an interactive terminal UI designed for:
+
+* Operating the trading laboratory.
+* Debugging strategies.
+* Seeing which strategies are running.
+* Starting/stopping strategies.
+* Running backtests.
+* Editing strategy parameters.
+* Inspecting experiments.
+* Inspecting results.
+* Following logs.
+
+Use:
+
+Textual
+Rich
+
+Agent interface
+
+AI agents such as OpenClaw must not interact with the TUI.
+
+Agents use deterministic CLI commands:
+
+lumiq strategies list --json
+lumiq strategy show momentum --json
+lumiq status momentum --json
+lumiq backtest momentum --json
+lumiq experiment run momentum --json
+lumiq experiment compare <run-a> <run-b> --json
+lumiq start momentum --paper --json
+lumiq stop momentum --json
+lumiq results <run-id> --json
+
+--json is the canonical machine interface.
+
+The JSON interface must remain stable even if the TUI changes.
+
+⸻
+
+24. Shared Application Logic
+
+The TUI and CLI must never implement separate trading/application logic.
+
+Both must call the same Python services.
+
+Do NOT implement:
+
+TUI → shell → CLI → LumiQ
+
+Instead:
+
+                  ┌── CLI
+                  │
+LumiQ services ←──┤
+                  │
+                  └── TUI
+
+For example, starting a strategy should conceptually work like:
+
+supervisor.start_strategy(...)
+
+Both:
+
+lumiq start momentum --paper --json
+
+and the TUI Start action call that same underlying service.
+
+The same rule applies to:
+
+* Strategy discovery
+* Backtests
+* Start
+* Stop
+* Status
+* Experiments
+* Results
+* Logs
+
+⸻
+
+25. TUI — Main Screen
+
+The initial TUI should remain intentionally small.
+
+The main screen displays the strategy pool and current runtime state.
+
+┌─ LumiQ ───────────────────────────────────────────────────────────┐
+│ Trading Laboratory                              System ● Running │
+│                                                                  │
+│ Strategies                                                       │
+│                                                                  │
+│ NAME                 MODE       STATUS       PNL       ACTION     │
+│ › Momentum V3        Paper      ● Running    +1.4%     [Stop]     │
+│   Mean Reversion     —          ○ Stopped     —        [Start]    │
+│   SPY Breakout       Paper      ● Running    +0.3%     [Stop]     │
+│   Crypto Momentum    —          ○ Stopped     —        [Start]    │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│ ↑↓ Select   Enter Details   R Run   S Stop   B Backtest   Q Quit │
+└──────────────────────────────────────────────────────────────────┘
+
+The main screen must prioritize operational information rather than analytics.
+
+The user should immediately understand:
+
+What strategies exist?
+What is running?
+What mode is each strategy using?
+Is something failing?
+What can I start or stop?
+
+⸻
+
+26. Strategy Detail
+
+Selecting a strategy opens its detail view.
+
+┌─ Momentum V3 ────────────────────────────────────────────────────┐
+│                                                                  │
+│ Status       ● Running          Mode          Paper              │
+│ Broker       Alpaca             Started       09:31              │
+│                                                                  │
+│ Parameters                                                       │
+│ lookback                         30                              │
+│ stop_loss                        0.03                            │
+│ risk                             0.02                            │
+│                                                                  │
+│ [Backtest] [Edit Params] [Experiments] [Logs] [Stop]             │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+
+The initial actions are:
+
+Start
+Stop
+Backtest
+Edit Parameters
+Experiments
+Results
+Logs
+Open Source
+
+Do not turn this into a full IDE.
+
+⸻
+
+27. Editing
+
+There are two different kinds of editing.
+
+Parameters
+
+Strategy parameters should be editable directly from the TUI.
+
+For example:
+
+lookback       [30    ]
+stop_loss      [0.03  ]
+risk           [0.02  ]
+
+These values must map to LumiBot strategy parameters and the existing LumiQ experiment/backtest system.
+
+Source Code
+
+Do not build a source-code editor inside LumiQ.
+
+Provide:
+
+Open Source
+
+which opens the strategy using $EDITOR.
+
+Conceptually:
+
+$EDITOR strategies/momentum/strategy.py
+
+The TUI should display the strategy’s source location before opening it.
+
+⸻
+
+28. Backtest Dialog
+
+Backtest opens a small configuration dialog:
+
+┌─ Run Backtest ────────────────────────────┐
+│                                          │
+│ Strategy        momentum-v3              │
+│                                          │
+│ Start           2025-01-01               │
+│ End             2025-12-31               │
+│ Budget          $100,000                  │
+│ Data Source     Yahoo                     │
+│                                          │
+│ Parameters                               │
+│ lookback        [ 30    ]                 │
+│ stop_loss       [ 0.03  ]                 │
+│ risk            [ 0.02  ]                 │
+│                                          │
+│          [ Cancel ]  [ Run Backtest ]     │
+└───────────────────────────────────────────┘
+
+This must call the same backtest service used by:
+
+lumiq backtest momentum-v3 ...
+
+Do not implement TUI-specific backtesting behavior.
+
+⸻
+
+29. Experiments View
+
+The TUI should make experiments observable to the human operator.
+
+Example:
+
+┌─ Experiments / Momentum V3 ──────────────────────────────────────┐
+│                                                                  │
+│ RUN             RETURN       SHARPE       DRAWDOWN     STATUS    │
+│ baseline         12.1%        1.31         -9.4%       Complete  │
+│ exp_021          13.8%        1.52         -7.1%       Complete  │
+│ exp_022          11.9%        1.28         -6.8%       Complete  │
+│ exp_023            —            —            —         Running   │
+│                                                                  │
+│ [Compare]        [New Experiment]        [View Results]           │
+└──────────────────────────────────────────────────────────────────┘
+
+The TUI must read from the same Run Registry used by the agent CLI.
+
+This allows a human to observe experiments launched by OpenClaw and vice versa.
+
+⸻
+
+30. Logs View
+
+Provide a simple live log viewer:
+
+┌─ Momentum V3 / Logs ─────────────────────────────────────────────┐
+│                                                                  │
+│ 14:31:02  Iteration started                                      │
+│ 14:31:03  SPY price 674.21                                       │
+│ 14:31:03  Signal HOLD                                            │
+│ 14:31:04  Portfolio value $102,431                               │
+│ 14:32:02  Iteration started                                      │
+│                                                                  │
+│                                                    ● FOLLOWING   │
+└──────────────────────────────────────────────────────────────────┘
+
+Reuse LumiBot/LumiQ logs.
+
+Do not create another logging system exclusively for the TUI.
+
+The viewer only needs basic functionality initially:
+
+follow
+scroll
+pause
+resume
+clear view
+
+“Clear view” must not delete the underlying log.
+
+⸻
+
+31. Keyboard Navigation
+
+The initial TUI should be optimized for keyboard operation.
+
+Recommended shortcuts:
+
+↑ / ↓       Navigate
+Enter       Open strategy
+Esc         Back
+R           Run
+S           Stop
+B           Backtest
+E           Edit parameters
+X           Experiments
+L           Logs
+Q           Quit
+
+Keep shortcuts consistent across screens.
+
+⸻
+
+32. Runtime State
+
+The TUI and agent must observe the same runtime state.
+
+For example, if OpenClaw executes:
+
+lumiq start momentum --paper --json
+
+the TUI should subsequently display:
+
+Momentum       Paper       ● Running
+
+Likewise, if the human stops it from the TUI:
+
+[Stop]
+
+then:
+
+lumiq status momentum --json
+
+must report it as stopped.
+
+There must not be separate human and agent state.
+
+⸻
+
+33. Project Reorganization
+
+The existing project already contains:
+
+luminbot-cli/
+├── .venv/
+├── docs/
+├── lumibot-old-orchestrator/
+├── lumiq/
+│   ├── __init__.py
+│   ├── __main__.py
+│   ├── .env
+│   ├── cli.py
+│   ├── database.py
+│   ├── registry.py
+│   ├── supervisor.py
+│   └── worker.py
+├── scripts/
+├── strategies/
+├── .gitignore
+└── requirements.txt
+
+Do not discard or rewrite working implementations simply to achieve a new folder structure.
+
+First inspect the responsibility of every existing module.
+
+Then refactor incrementally toward:
+
+luminbot-cli/
+│
+├── docs/
+│   └── product-definition.md
+│
+├── lumiq/
+│   ├── __init__.py
+│   ├── __main__.py
+│   │
+│   ├── cli/
+│   │   ├── __init__.py
+│   │   ├── app.py
+│   │   ├── strategies.py
+│   │   ├── backtest.py
+│   │   ├── experiments.py
+│   │   ├── runtime.py
+│   │   └── results.py
+│   │
+│   ├── tui/
+│   │   ├── __init__.py
+│   │   ├── app.py
+│   │   ├── strategies.py
+│   │   ├── detail.py
+│   │   ├── backtest.py
+│   │   ├── experiments.py
+│   │   └── logs.py
+│   │
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── strategies.py
+│   │   ├── backtests.py
+│   │   ├── experiments.py
+│   │   ├── runtime.py
+│   │   └── results.py
+│   │
+│   ├── registry/
+│   │   ├── __init__.py
+│   │   ├── strategies.py
+│   │   └── runs.py
+│   │
+│   ├── infrastructure/
+│   │   ├── __init__.py
+│   │   ├── database.py
+│   │   ├── supervisor.py
+│   │   └── worker.py
+│   │
+│   └── output/
+│       ├── __init__.py
+│       ├── console.py
+│       └── json.py
+│
+├── strategies/
+│
+├── scripts/
+├── tests/
+│   ├── cli/
+│   ├── tui/
+│   ├── services/
+│   └── integration/
+│
+├── .env
+├── .gitignore
+└── requirements.txt
+
+Responsibility of each layer
+
+cli/
+
+Typer commands only. Parse input, call services, render output.
+
+tui/
+
+Textual interface only. Display state and call services.
+
+services/
+
+Shared application operations used by both CLI and TUI.
+
+registry/
+
+Strategy discovery and LumiQ run/experiment registry.
+
+infrastructure/
+
+Process supervision, persistence and worker implementation.
+
+output/
+
+Human console rendering and deterministic JSON serialization.
+
+strategies/
+
+Existing LumiBot strategies. Do not couple them to the TUI or CLI.
+
+⸻
+
+34. Refactoring Existing Files
+
+Before moving anything, inspect the current implementations of:
+
+lumiq/cli.py
+lumiq/database.py
+lumiq/registry.py
+lumiq/supervisor.py
+lumiq/worker.py
+
+Then separate responsibilities.
+
+Expected direction:
+
+Current                         Target
+cli.py                    →     cli/*
+database.py               →     infrastructure/database.py
+registry.py               →     registry/*
+supervisor.py             →     infrastructure/supervisor.py
+worker.py                 →     infrastructure/worker.py
+
+Business/application logic currently embedded in those files should move into:
+
+services/*
+
+Do not mechanically move whole files if they contain mixed responsibilities.
+
+Extract by responsibility.
+
+⸻
+
+35. Entry Point Behavior
+
+The default command:
+
+lumiq
+
+opens the TUI.
+
+Agent/human automation commands remain available:
+
+lumiq strategies list
+lumiq strategy show momentum
+lumiq backtest momentum
+lumiq experiment run momentum
+lumiq results <run-id>
+lumiq start momentum --paper
+lumiq stop momentum
+lumiq status momentum
+
+Agent usage adds:
+
+--json
+
+Example:
+
+lumiq status momentum --json
+
+The presence of a subcommand means do not launch the TUI.
+
+⸻
+
+36. Refactoring Constraint
+
+The agent must not perform a big-bang rewrite.
+
+Required order:
+
+1. Inspect existing implementation
+2. Add tests around currently working behavior
+3. Identify mixed responsibilities
+4. Create shared services
+5. Move CLI to use services
+6. Verify existing CLI still works
+7. Add deterministic --json output
+8. Add TUI on top of the same services
+9. Verify CLI and TUI observe identical state
+10. Remove obsolete code only after replacement is verified
+
+lumibot-old-orchestrator/ must not be deleted automatically. Inspect whether it contains functionality still referenced by LumiQ. If it is truly obsolete, document that finding before removing it.
+
+The refactor is successful when the architecture becomes cleaner without breaking the currently executing strategy workflow.
