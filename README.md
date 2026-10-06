@@ -7,6 +7,42 @@ LumiQ provides two interfaces over the same services:
 - **Textual TUI** for a human operator.
 - **Typer CLI** with stable `--json` output for agents and automation.
 
+## Installation
+
+Install the CLI globally with `pipx` from the Git repository:
+
+```bash
+brew install pipx                 # macOS, once
+pipx ensurepath                   # restart the shell after this
+pipx install 'git+https://github.com/velascode64/lumiq-cli.git'
+```
+
+On Linux, install `pipx` with the system package manager first, then run the
+same `pipx ensurepath` and `pipx install` commands. The package creates the
+`lumiq` executable; no `.venv/bin/python` prefix is needed.
+
+Upgrade it later with:
+
+```bash
+pipx upgrade lumiq-cli
+```
+
+The repository's `strategies/` directory is the strategy workspace. When the
+CLI is installed globally, point it to that checkout:
+
+```bash
+export LUMIQ_PROJECT_ROOT=$HOME/src/lumiq-cli
+```
+
+Put the Alpaca `.env` file in that project root. This keeps credentials and
+strategy files outside the Python package environment.
+
+For local development, install the checkout in editable mode:
+
+```bash
+pip install -e '.[dev]'
+```
+
 ## Setup
 
 This checkout expects the sibling LumiBot checkout at `../lumibot`, as declared in `requirements.txt`.

@@ -14,7 +14,8 @@ class LumiqApi:
     """Stable application API shared by CLI, TUI, and future web adapters."""
 
     def __init__(self, project_root: Path | str | None = None, state_dir: Path | str | None = None):
-        self.project_root = Path(project_root or Path(__file__).resolve().parents[1]).resolve()
+        default_root = Path(os.environ.get("LUMIQ_PROJECT_ROOT", Path(__file__).resolve().parents[1]))
+        self.project_root = Path(project_root or default_root).expanduser().resolve()
         resolved_state = Path(state_dir or os.environ.get("LUMIQ_STATE_DIR", "~/.lumiq"))
         self.strategies = StrategyService(self.project_root / "strategies", resolved_state)
         self.runtime = RuntimeService(self.project_root, resolved_state)

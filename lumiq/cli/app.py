@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -17,9 +18,8 @@ strategy_app = typer.Typer(no_args_is_help=True)
 app.add_typer(strategies_app, name="strategies")
 app.add_typer(strategy_app, name="strategy")
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-PACKAGE_ROOT = PROJECT_ROOT / "lumiq"
-load_dotenv(PACKAGE_ROOT / ".env", override=False)
+_PACKAGE_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(os.environ.get("LUMIQ_PROJECT_ROOT", _PACKAGE_ROOT)).expanduser().resolve()
 load_dotenv(PROJECT_ROOT / ".env", override=False)
 
 
