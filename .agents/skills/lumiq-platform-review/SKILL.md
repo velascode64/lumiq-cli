@@ -25,6 +25,23 @@ This is a read-only review workflow by default:
 - Never treat an observed market price as an executed fill price.
 - Do not automatically restart a failed process or change its parameters.
 
+## Strategy Change Protocol
+
+If the user explicitly asks to modify a strategy, do not edit the current
+branch directly:
+
+1. Inspect the current Git status and preserve unrelated working-tree changes.
+2. Create and switch to a new descriptive branch before editing, for example
+   `strategy/paper-eth-momentum-risk-limit`.
+3. Make only the requested strategy changes on that branch.
+4. Run focused validation and report its result.
+5. Notify the user of the branch name, files changed, behavior changed, and
+   validation performed. Mention any remaining risk or required approval.
+
+Do not commit, push, merge, or delete branches unless the user explicitly asks.
+If a branch cannot be created because the working tree or repository state
+would make it unsafe, stop before editing and report the blocker.
+
 ## Review Workflow
 
 Run commands from the LumiQ project root. Prefer the installed `lumiq`
